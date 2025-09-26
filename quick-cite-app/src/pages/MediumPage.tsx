@@ -46,7 +46,7 @@ export default function MediumPage() {
             <p>{medium}</p>
             {/* Example (hardcoded) */}
             <div className="border">
-                <p>{BASIC_BOOK}</p>
+                {BASIC_BOOK}
             </div>
 
             <div className="flex flex-col gap-5">

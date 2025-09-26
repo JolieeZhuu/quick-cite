@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 #root {
-  max-width: 3840px;
+  width: 300px;
   margin: 0 auto;
   text-align: center;
 }
