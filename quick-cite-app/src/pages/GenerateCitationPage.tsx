@@ -28,13 +28,6 @@ export default function GenerateCitationPage() {
     const [bookList, setBookList] = useState<React.ReactElement[]>([])
     const [loading, setLoading] = useState<boolean>(false)
 
-
-    function navigateToEndPage() {
-        navigate(
-            "/end"
-        )
-    }
-
     function navigateToMediumPage() {
         navigate(
             "/medium", {
@@ -62,18 +55,22 @@ export default function GenerateCitationPage() {
         console.log(values)
         setLoading(true)
 
-        fetch(url + values.title, options)
+        const fields = "&fields=key,title,author_name,isbn,publisher,publish_year"
+        fetch(url + values.title + fields, options)
             .then(response => response.json())
             .then(data => {
                 setLoading(false)
                 const docs = data.docs.slice(0, 10);
+                
                 console.log(docs);
                 const docsDisplay = docs.map((element: any, index: number) => {
                     return (
-                        <div key={index} className="bg-gray-900 hover:bg-gray-700 mb-2">
+                        <div key={index} className="bg-gray-900 hover:bg-gray-700 mb-2" onClick={() => handleOnClick(docs[index])}>
                             <p>Title: {element.title}</p>
                             <p>Author: {element.author_name}</p>
-                            <p>Published year: {element.first_publish_year}</p>
+                            <p>Published year: {element.publish_year[0]}</p>
+                            <p>Publisher: {element.publisher[0]}</p>
+                            <p>ISBN: {element.isbn[0]}</p>
                         </div>
                     )
                 });
@@ -81,6 +78,35 @@ export default function GenerateCitationPage() {
             }
             )
             .catch(error => (console.error('Error:', error)))
+    }
+
+    function handleOnClick(data: any) {
+        console.log(data)
+        const fullAuthorName = data.author_name[0].split(" ")
+        let authorName = ""
+
+        if (fullAuthorName.length > 2) {
+            authorName += `${fullAuthorName[fullAuthorName.length - 1]}, ${fullAuthorName[0][0]}. ${fullAuthorName[1][0]}.`
+        } else {
+            authorName += `${fullAuthorName[fullAuthorName.length - 1]}, ${fullAuthorName[0][0]}.`
+        }
+
+        navigate(
+            "/end", {
+                state: {
+                    apa: {
+                        author: authorName,
+                        year: data.publish_year[0],
+                        title: data.title,
+                        publisher: data.publisher[0]
+                    }
+                }
+            }
+        )
+
+        /*
+        Author, A. A. (Year of publication). Title of work: Capital letter also for subtitle. Publisher Name. DOI (if available)
+        */
     }
 
     return (
@@ -107,9 +133,6 @@ export default function GenerateCitationPage() {
                 )
             }
             <div className="flex flex-col gap-5">
-                <button onClick={navigateToEndPage}>
-                    Generate
-                </button>
                 <button onClick={navigateToMediumPage}>
                     Go Back
                 </button>
