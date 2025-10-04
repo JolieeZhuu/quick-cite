@@ -1,9 +1,8 @@
 import { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { z } from "zod" // Used for input validation
+import { z } from "zod"
 
 const url = "https://openlibrary.org/search.json?q=";
 const headers = new Headers({
@@ -21,122 +20,120 @@ const searchSchema = z.object({
 })
 
 export default function GenerateCitationPage() {
-
     const navigate = useNavigate();
     const location = useLocation();
     const medium = location.state.type;
     const [bookList, setBookList] = useState<React.ReactElement[]>([])
     const [loading, setLoading] = useState<boolean>(false)
+    const [nothing, setNothing] = useState<boolean>(false)
 
     function navigateToMediumPage() {
-        navigate(
-            "/medium", {
-                state: {
-                    type: "Basic Book"
-                }
-            }
-        )
+        navigate("/medium", { state: { type: "Basic Book" } })
     }
 
-    // Define form
     const { 
         register, 
         handleSubmit, 
         formState: { errors } 
     } = useForm<z.infer<typeof searchSchema>>({
         resolver: zodResolver(searchSchema),
-        defaultValues: {
-            title: "",
-        },
+        defaultValues: { title: "" },
     })
 
-    // Define search submit handler
     function onSearchSubmit(values: z.infer<typeof searchSchema>) {
-        console.log(values)
         setLoading(true)
-
+        setNothing(false)
         const fields = "&fields=key,title,author_name,isbn,publisher,publish_year"
         fetch(url + values.title + fields, options)
             .then(response => response.json())
             .then(data => {
                 setLoading(false)
-                const docs = data.docs.slice(0, 10);
-                
-                console.log(docs);
-                const docsDisplay = docs.map((element: any, index: number) => {
-                    return (
-                        <div key={index} className="bg-gray-900 hover:bg-gray-700 mb-2" onClick={() => handleOnClick(docs[index])}>
-                            <p>Title: {element.title}</p>
-                            <p>Author: {element.author_name}</p>
-                            <p>Published year: {element.publish_year[0]}</p>
-                            <p>Publisher: {element.publisher[0]}</p>
-                            <p>ISBN: {element.isbn[0]}</p>
+                if (!Array.isArray(data.docs) || !data.docs.length) {
+                    setNothing(true)
+                } else {
+                    const docs = data.docs.slice(0, 10);
+                    const docsDisplay = docs.map((element: any, index: number) => (
+                        <div
+                            key={index}
+                            className="bg-violet-50 hover:bg-violet-100 border rounded p-3 mb-2 cursor-pointer transition"
+                            onClick={() => handleOnClick(element)}
+                        >
+                            <p className="font-semibold text-gray-700">{element.title}</p>
+                            <p className="text-sm text-gray-700">Author: {element.author_name?.join(", ")}</p>
+                            <p className="text-sm text-gray-700">Published: {element.publish_year?.[0]}</p>
+                            <p className="text-sm text-gray-700">Publisher: {element.publisher?.[0]}</p>
+                            <p className="text-sm text-gray-700">ISBN: {element.isbn?.[0]}</p>
                         </div>
-                    )
-                });
-                setBookList(docsDisplay)
-            }
-            )
+                    ));
+                    setBookList(docsDisplay)
+                }
+            })
             .catch(error => (console.error('Error:', error)))
     }
 
     function handleOnClick(data: any) {
-        console.log(data)
-        const fullAuthorName = data.author_name[0].split(" ")
+        const fullAuthorName = data.author_name?.[0]?.split(" ") || []
         let authorName = ""
-
         if (fullAuthorName.length > 2) {
             authorName += `${fullAuthorName[fullAuthorName.length - 1]}, ${fullAuthorName[0][0]}. ${fullAuthorName[1][0]}.`
-        } else {
+        } else if (fullAuthorName.length > 1) {
             authorName += `${fullAuthorName[fullAuthorName.length - 1]}, ${fullAuthorName[0][0]}.`
+        } else {
+            authorName += data.author_name?.[0] || ""
         }
-
-        navigate(
-            "/end", {
-                state: {
-                    apa: {
-                        author: authorName,
-                        year: data.publish_year[0],
-                        title: data.title,
-                        publisher: data.publisher[0]
-                    }
+        navigate("/end", {
+            state: {
+                apa: {
+                    author: authorName,
+                    year: data.publish_year?.[0],
+                    title: data.title,
+                    publisher: data.publisher?.[0]
                 }
             }
-        )
-
-        /*
-        Author, A. A. (Year of publication). Title of work: Capital letter also for subtitle. Publisher Name. DOI (if available)
-        */
+        })
     }
 
     return (
-        <div className="min-w-screen space-y-5">
-            <div className="bg-gray-500 p-4">
-                <h1>Quick Cite</h1>
-            </div>
-            <p>Generate Citation</p>
-            <p>{medium}</p>
-            <div>
-                <form onSubmit={handleSubmit(onSearchSubmit)}>
-                    <label className="mr-3">Enter book title:</label>
-                    <input {...register("title")} className="border" type="text" placeholder="Search for a book title..." />
-                    { errors.title && (
-                        <div className="text-red-500">{ errors.title.message }</div>
+        <div className="w-full min-h-screen bg-gradient-to-b from-slate-100 to-slate-200">
+            <header className="bg-violet-400 px-6 py-4 rounded-b-lg shadow">
+                <h1 className="text-2xl font-bold text-white tracking-wide">Quick Cite</h1>
+            </header>
+            <main className="max-w-md mx-auto mt-8 p-4 space-y-6 bg-white rounded-lg shadow">
+                <button
+                    onClick={navigateToMediumPage}
+                    className="text-xs px-3 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 mb-2"
+                >
+                    ← Go Back
+                </button>
+                <p className="text-lg font-semibold text-gray-800">Generate Citation</p>
+                <p className="italic text-gray-600">{medium}</p>
+                <form onSubmit={handleSubmit(onSearchSubmit)} className="flex flex-col gap-2">
+                    <label className="text-base text-gray-600">Enter a book title:</label>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+                        <input
+                            {...register("title")}
+                            className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-600 w-full sm:w-auto"
+                            type="text"
+                            placeholder="Search for a book title..."
+                        />
+                        <button
+                            type="submit"
+                            className="px-4 py-2 rounded bg-violet-500 text-white font-medium hover:bg-violet-600 transition"
+                        >
+                            Search
+                        </button>
+                    </div>
+                    {errors.title && (
+                        <div className="text-red-500 text-sm">{errors.title.message}</div>
                     )}
                 </form>
-            </div>
-            {
-                loading ? (
-                    <p>Loading...</p>
-                ) : (
-                    bookList
-                )
-            }
-            <div className="flex flex-col gap-5">
-                <button onClick={navigateToMediumPage}>
-                    Go Back
-                </button>
-            </div>
+                {loading && <p className="text-gray-500">Loading...</p>}
+                {nothing && <p className="text-gray-500">Nothing available.</p>}
+                {/* Scrollable book list area */}
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                    {bookList}
+                </div>
+            </main>
         </div>
     )
 };
